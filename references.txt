@@ -1,0 +1,9 @@
+1. Udacity A/B Testing Forum (Most Referenced)
+https://discussions.udacity.com/c/nd002-a-b-testing
+
+2. Udacity A/B Testing Course
+https://classroom.udacity.com/nanodegrees/nd002/parts/00213454013
+
+3. A/B Testing Wikipedia page
+https://en.wikipedia.org/wiki/A/B_testing
+
