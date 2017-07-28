@@ -131,12 +131,16 @@ $(document).ready(function () {
 <p>List which metrics you will use as invariant metrics and evaluation metrics here. For each metric, explain both why you did or did not use it as an invariant metric and why you did or did not use it as an evaluation metric. Also, state what results you will look for in your evaluation metrics in order to launch the experiment.</p>
 </blockquote>
 <p><em>Number of cookies</em>: invariant metric. The number of people who visited the course overview page couldn’t possibly change due to the new prompt that they haven’t seen yet, the new prompt appearing after the click of “start free trial” button won’t affect the people’s desire to view the course page. Therefore this is an invariant metric in our A/B test.</p>
-<p><em>Number of user-ids</em>: neither an invariant metric nor an evaluation metric. This is not an invariant metric because only people who click the “start free trial” button and accept the new prompt about the time commitment will be tracked by their user-id, otherwise people will be tracked by the unit of diversion which is cookies. This is also not a robust metric to evaluate the experiment. Number of user-ids is a raw count which will fluctuate frequently day by day, making it difficult for me to conduct a powerful statistical test to measure the differences between the control and experiment group.</p>
+<p><em>Number of user-ids</em>: neither an invariant metric nor an evaluation metric. This is not an invariant metric because only people who click the “start free trial” button and accept the new prompt about the time commitment will be tracked by their user-id, otherwise people will be tracked by the unit of diversion which is cookies. This is also not a robust metric to evaluate the experiment. Number of user-ids is a raw count which will fluctuate frequently day by day, and we could end up with different sized control and experiment group. A raw count such as number of user-ids is not able to normalize to this size difference (that’s why I use gross conversion as evaluation metric that is normalized by cookies), so it is not a good evaluation metric.</p>
 <p><em>Number of clicks</em>: invariant metric. Again the same reason of classifying “Number of cookies” as invariant metric could be applied here. People who clicked the button haven’t seen the new prompt of the time commitment yet, thus this metric will be invariant.</p>
 <p><em>Click-through-probability</em>: invariant metric. Since the number of unique clicks and the number of unique cookies are both invariant due to the fact that users’ behavior won’t change much before they see the new prompt we tested on, the click-through-probability is a good invariant metric.</p>
-<p><em>Gross conversion</em>: evaluation metric. This metric is a ratio of Number of User IDs to enroll over unique cookies to click the “start free trial” button. This is an ideal evaluation metric because it not only helps control the impact brought by different sized groups, but also effectively captures the difference we would like to examine through the A/B test. I think there would be less people who click the “start free trial” button continuing enrolling the course due to the pop-up message about the time commitment to the course, thus decreasing the gross conversion metric.</p>
-<p><em>Retention</em>: neither an invariant metric nor an evaluation metric. The analytic estimate of the variability is too high to feasibly use retention as an evaluation metric, meaning it will take longer to collect enough sample data to run the experiment. Besides, retention’s unit of analysis(user-ids) differs from the unit of diversion(cookies), therefore the analytic estimate of the variability is probably even lower than the empirical estimate, which will make the experiment even longer. So I decide to drop the metric.</p>
-<p><em>Net conversion</em>: evaluation metric. It is actually a product of the above two metrics (Gross conversion * Retention). Net conversion is a ratio of the number of user-ids that make payments over the number of unique cookies that click “start free trial” button. I expect that a higher proportion of the users who made the click would continue past the free trial and make the payment, thus raising net conversion metric a little bit.</p>
+<p><em>Gross conversion</em>: evaluation metric. This metric is a ratio of Number of User IDs to enroll over unique cookies to click the “start free trial” button. This is an ideal evaluation metric because it not only helps control the impact brought by different sized groups, but also effectively captures the difference we would like to examine through the A/B test.</p>
+<p><em>Retention</em>: neither an invariant metric nor an evaluation metric. Retention’s unit of analysis(user-ids) differs from the unit of diversion(cookies), therefore it has higher variance compared to other metrics. For metrics with high variance, a larger number of sample data is required to power the experiment, which may make the length of the experiment extremely long. So I decide to drop the metric.</p>
+<p><em>Net conversion</em>: evaluation metric. It is actually a product of the above two metrics (Gross conversion * Retention). It could be considered as a good metric to evaluate the goal of the experiment: whether launching the new change would decrease the ratio of the number of students who make the initial payments over the those who click “start free trial” button.</p>
+<p><strong>Launch Criteria</strong></p>
+<p>The goals of the experiment are (1) decrease enrollments by unprepared students (2) without decreasing the number of students who complete the free trial and make at least one payment.</p>
+<p>I anticipate that there will be less people enrolling the course after clicking on the free trial buttion due to the pop-up message about the time commitment to the course. Gross conversion metric is very likely to decrease if the new feature is launched.</p>
+<p>For net conversion metric, I would expect it not to decrease too much in this experiment so that the total revenue received by Udacity would not be severely impacted.</p>
 </div>
 <div id="measuring-standard-deviation" class="section level3">
 <h3>Measuring Standard Deviation</h3>
@@ -188,11 +192,11 @@ Even if 100% of the traffic is diverted to the experiment, it will still take <s
 <blockquote>
 <p>Indicate what fraction of traffic you would divert to this experiment and, given this, how many days you would need to run the experiment.</p>
 </blockquote>
-<p>After different trials, the fraction of traffic I would divert to this experiment is <code>50%</code>. We know that the required number of pageviews is <code>685325</code> and the unique cookies to view the page per day is <code>40000</code>, so the days I would need to run the experiment is <span class="math inline">\(\frac{685325}{40000 \times 50\%} \approx 35\)</span> days.</p>
+<p>After different trials, the fraction of traffic I would divert to this experiment is <code>80%</code>. We know that the required number of pageviews is <code>685325</code> and the unique cookies to view the page per day is <code>40000</code>, so the days I would need to run the experiment is <span class="math inline">\(\frac{685325}{40000 \times 80\%} \approx 22\)</span> days.</p>
 <blockquote>
 <p>Give your reasoning for the fraction you chose to divert. How risky do you think this experiment would be for Udacity?</p>
 </blockquote>
-<p>I choose to run the experiment with 50% of the total data, of which 25% would be in the control group and 25% would be in the experiment group. It is always a good act not to roll out a new feature to a larger fraction of the total visitors, because we need to avoid the negative exposure to media/press, limit the unexpected issues that may adversely impact user experience, and avoid some other safety concerns. At the same time, there is always a chance that data collected over a short period of time is influenced by specific events such as holidays or weekends. In this case I also need to test the payment behavior after a 14-day free trial period for every single user, thus running the experiment over 35 days seems to be a reasonable timeframe. So I think this experiment would not be too risky for Udacity.</p>
+<p>I choose to run the experiment with 80% of the total data, of which 40% would be in the control group and 40% would be in the experiment group. For most purposes an experiment is only considered high risk if it could harm someone or is collecting sensitive information, such as medical information. Otherwise the experiment is typically considered low risk. In this experiment we are collecting user bahavioral data such as number of enrollments and clicks, therefore it involves low risks and a 80% diversion of traffic would just be appropriate. On the other hand, I need to test the payment behavior after a 14-day free trial period for every single user, thus running the experiment for 22 days seems to be a reasonable timeframe which matches Udacity’s expectation of completeing the experiment “in a few weeks”.</p>
 </div>
 </div>
 </div>
@@ -493,13 +497,26 @@ contain_dmin &lt;- (lower_bound &lt;= d_min &amp; upper_bound &gt;= d_min) |
 <p>To reduce the frustrated students who cancel early in the course, I would suggest adding a new prompt after they click on the “end free trial” button. The prompt would ask these students about whether they find it difficult to keep up with the flow of the course. If a student chooses “yes”, then he/she will be redirected to a page with possible solutions: successful experience from previous students, advise about how to seek help from classmates and coaches on the forum, etc. If a student chooses “no”, then the free trial will be cancelled immediately.</p>
 <p><strong>Hypothesis</strong></p>
 <p>The effect I expect from the change would be a reduction in the number of students who cancel before the free trial ends, thus leading to an increase in the revenue as more students make at least one payment.</p>
+<p><strong>Invariant metric</strong></p>
+<p>Number of user-ids: this metric is considered as invariant because this experiment only analyze post-enrollment data. The number of user-ids (students who enrolled will be assigned a user-id) couldn’t possibly change due to the new prompt they haven’t seen yet.</p>
 <p><strong>Evaluation metrics</strong></p>
 <ol style="list-style-type: decimal">
-<li><p>Net Conversion: this metric captures the proportion of students who continue past the free trial and make the payment out of the students who enrolled in the free trial. This is an effective metric to test whether or not the new prompt would affect the number of student who make the payment.</p></li>
-<li><p>Revenue per Enrollee: this metric measures the ratio of total revenue over the total number of students who enrolled in the course (both in the free trial and past the free trial). This metric could track the effectiveness of the new change bringing in more revenue.</p></li>
+<li><p>Payment Conversion: this metric captures the proportion of students who continue past the free trial and make the payment out of the students who enrolled in the free trial. This is an effective metric to test whether or not the new prompt would affect the number of student who make the initial payment.</p></li>
+<li><p>Revenue per Initial Enrollee: this metric measures the ratio of total revenue from students who completed the free trial and made the initial payment over the total number of students who are in the free trial stage or just complete the free trial. This metric could track the effectiveness of the new change bringing in more revenue.</p></li>
 </ol>
 <p><strong>Unit of Diversion</strong></p>
 <p>Unit of diversion would be user id throughout the experiment since I’m tracking the students who already signed in the page to start the course.</p>
+</div>
+<div id="references" class="section level1">
+<h1>References</h1>
+<ol style="list-style-type: decimal">
+<li><p>Udacity A/B Testing Forum (Most Referenced)</p>
+<p><a href="https://discussions.udacity.com/c/nd002-a-b-testing" class="uri">https://discussions.udacity.com/c/nd002-a-b-testing</a></p></li>
+<li><p>Udacity A/B Testing Course</p>
+<p><a href="https://classroom.udacity.com/nanodegrees/nd002/parts/00213454013" class="uri">https://classroom.udacity.com/nanodegrees/nd002/parts/00213454013</a></p></li>
+<li><p>A/B Testing Wikipedia page</p>
+<p><a href="https://en.wikipedia.org/wiki/A/B_testing" class="uri">https://en.wikipedia.org/wiki/A/B_testing</a></p></li>
+</ol>
 </div>
 
 

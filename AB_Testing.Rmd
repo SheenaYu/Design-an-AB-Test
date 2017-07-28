@@ -1,0 +1,572 @@
+---
+title: "A/B Testing for Udacity Free Trial Screener"
+author: "Sheena Yu"
+date: "5/5/2017"
+output: html_document
+
+---
+```{r echo=FALSE, warning=FALSE}
+library(knitr)
+```
+
+# Experiment Design
+
+### Metric Choice
+
+> List which metrics you will use as invariant metrics and evaluation metrics 
+here. For each metric, explain both why you did or did not use it as an 
+invariant metric and why you did or did not use it as an evaluation metric. 
+Also, state what results you will look for in your evaluation metrics in order 
+to launch the experiment.
+
+*Number of cookies*: invariant metric. The number of people who visited the 
+course overview page couldn’t possibly change due to the new prompt that they 
+haven’t seen yet, the new prompt appearing after the click of “start free trial” 
+button won’t affect the people’s desire to view the course page. Therefore this 
+is an invariant metric in our A/B test.
+
+*Number of user-ids*: neither an invariant metric nor an evaluation metric. This 
+is not an invariant metric because only people who click the “start free trial” 
+button and accept the new prompt about the time commitment will be tracked by 
+their user-id, otherwise people will be tracked by the unit of diversion which 
+is cookies. This is also not a robust metric to evaluate the experiment. Number 
+of user-ids is a raw count which will fluctuate frequently day by day, and we could 
+end up with different sized control and experiment group. A raw count such as 
+number of user-ids is not able to normalize to this size difference (that's why 
+I use gross conversion as evaluation metric that is normalized by cookies), so 
+it is not a good evaluation metric.
+
+*Number of clicks*: invariant metric. Again the same reason of classifying 
+“Number of cookies” as invariant metric could be applied here. People who 
+clicked the button haven’t seen the new prompt of the time commitment yet, thus 
+this metric will be invariant.
+
+*Click-through-probability*: invariant metric. Since the number of unique clicks 
+and the number of unique cookies are both invariant due to the fact that users’ 
+behavior won’t change much before they see the new prompt we tested on, the 
+click-through-probability is a good invariant metric.
+
+*Gross conversion*: evaluation metric. This metric is a ratio of Number of User 
+IDs to enroll over unique cookies to click the "start free trial" button. This 
+is an ideal evaluation metric because it not only helps control the impact 
+brought by different sized groups,  but also effectively captures the difference 
+we would like to examine through the A/B test. 
+
+*Retention*: neither an invariant metric nor an evaluation metric. Retention’s 
+unit of analysis(user-ids) differs from the unit of diversion(cookies), 
+therefore it has higher variance compared to other metrics. 
+For metrics with high variance, a larger number of sample data is required to 
+power the experiment, which may make the length of the experiment extremely long. 
+So I decide to drop the metric.
+
+*Net conversion*: evaluation metric. It is actually a product of the above two 
+metrics (Gross conversion * Retention). It could be considered as a good metric 
+to evaluate the goal of the experiment: whether launching the new change would 
+decrease the ratio of the number of students who make the initial payments over 
+the those who click “start free trial” button.
+
+**Launch Criteria**
+
+The goals of the experiment are (1) decrease enrollments by unprepared students 
+(2) without decreasing the number of students who complete the free trial and 
+make at least one payment.
+
+I anticipate that there will be less people enrolling the course after clicking 
+on the free trial buttion due to the pop-up message about the time commitment to 
+the course. Gross conversion metric is very likely to decrease if the new feature 
+is launched.
+
+For net conversion metric, I would expect it not to decrease too much in this 
+experiment so that the total revenue received by Udacity would not be severely 
+impacted.
+
+### Measuring Standard Deviation
+
+> List the standard deviation of each of your evaluation metrics.  
+
+In general, we can assume metrics like gross conversion and net conversion 
+follow a binomial distribution. The formula of standard deviation of a binomial 
+distribution is $\sqrt{\frac{p(1-p)}{n}}$, where p is the probability of 
+success and n is the sample size.
+
+**Gross Conversion**
+
+$$
+Gross\ Conversion\ SD = \sqrt{\frac{p(1-p)}{n}}
+                     = \sqrt{\frac{0.20625\times(1-0.20625)}{5000\times0.08}}
+                     = 0.0202
+$$
+
+**Net Conversion**
+
+$$
+Net\ Conversion\ SD = \sqrt{\frac{p(1-p)}{n}}
+                     = \sqrt{\frac{0.1093125\times(1-0.1093125)}{5000\times0.08}}
+                     = 0.0156
+$$
+
+For the purpose of demonstrating the reason why I drop "Retention" from evaluation 
+metrics, I calculated the variability of retetion as well. As we can see, the 
+analytic estimate of variability of retention is much larger than those of the 
+conversion metrics. 
+
+$$
+Retention\ SD = \sqrt{\frac{p(1-p)}{n}}
+                     = \sqrt{\frac{0.53\times(1-0.53)}{5000\times0.08\times0.20625}}
+                     = 0.0549
+$$
+
+
+> For each of your evaluation metrics, indicate whether you think the analytic 
+estimate would be comparable to the the empirical variability, or whether you 
+expect them to be different (in which case it might be worth doing an empirical 
+estimate if there is time). Briefly give your reasoning in each case.
+
+
+For both of my evaluation metrics (gross conversion and net conversion), the unit 
+of analysis is cookies that click on the “start free trial” button. The unit of 
+diversion in this A/B test is cookies that visit the course overview page. 
+Therefore the analytic estimate of the variability would be comparable to the 
+empirical variability because the unit of analysis and the unit of diversion are 
+almost the same.
+
+
+
+### Sizing
+
+#### Number of Samples vs. Power
+
+> Indicate whether you will use the Bonferroni correction during your analysis 
+phase, and give the number of pageviews you will need to power you experiment 
+appropriately. 
+
+I will not use the Bonferroni correction. The two evaluation metrics 
+(Gross Conversion and Net Conversion) are not 
+independent with each other as they both need to capture the clicks data, in which 
+case using the Bonferroni correction would be too conservative.
+
+
+Given $\alpha = 0.05$ and $\beta = 0.2$, I calculated the number of pageviews 
+total (across both groups) that is needed per metric to adequately 
+power the experiment, using the analytic estimates of variance. The tool I used 
+is this 
+[sample size calculator](http://www.evanmiller.org/ab-testing/sample-size.html).
+
+
+**Gross Conversion:** 
+
+With the practical signigicance boundary $d_{min} = 0.01$ and 
+probability of enrolling, given click $P(enrolling | click) = 20.625\%$, the required number of 
+samples calculated from the online calculator is `25835`, which is the number of 
+clicks on the "start free trial" button. Since I also need the samples 
+for both the control and experiment group, the total pageviews I need to run test 
+on this metric is $\frac{25835}{0.08} \times 2 = 645875$.
+
+
+**Net Conversion:**
+
+With the practical signigicance boundary $d_{min} = 0.0075$ and 
+probability of payment, given click $P(payment | click) = 10.93125\%$, 
+the required number of samples calculated from the online calculator is `27413`.
+ Again, the unit of analysis is the clicks on the "start free trial" button, so 
+ the pageviews I need across both groups is 
+ $\frac{27413}{0.08} \times 2 = 685325$. 
+
+To verify my decision not to keep `Retention` as my evaluation metric, I followed 
+the same calculation steps as those of the above two metrics, the pageviews I 
+need will increase to `4741212`.  
+Even if 100% of the traffic is diverted to the experiment, it will still
+take $\frac{4741212}{40000} \approx 119$ days to get such a large number of 
+sample data, which is not practical to collect. 
+
+#### Duration vs. Exposure
+
+> Indicate what fraction of traffic you would divert to this experiment and, 
+given this, how many days you would need to run the experiment. 
+
+After different trials, the fraction of traffic I would divert to this experiment 
+is `80%`. We know that the required number of pageviews is `685325`
+ and the unique cookies to view the page per day is `40000`, so the days I would 
+ need to run the experiment is 
+ $\frac{685325}{40000 \times 80\%} \approx 22$ days. 
+
+
+> Give your reasoning for the fraction you chose to divert. 
+How risky do you think this experiment would be for Udacity?
+
+I choose to run the experiment with 80% of the total data, of which 40% would be 
+in the control group and 40% would be in the experiment group. 
+For most purposes an experiment is only considered high risk if it could harm 
+someone or is collecting sensitive information, such as medical information. 
+Otherwise the experiment is typically considered low risk. In this experiment 
+we are collecting user bahavioral data such as number of enrollments and clicks, 
+therefore it involves low risks and a 80% diversion of traffic would just be 
+appropriate. 
+On the other hand, I need to test the payment behavior after a 14-day free trial 
+period for every single user, thus running the experiment for 22 days seems to 
+be a reasonable timeframe which matches Udacity's expectation of completeing the 
+experiment "in a few weeks". 
+ 
+# Experiment Analysis
+
+### Sanity Checks
+
+> For each of your invariant metrics, give the 95% confidence interval for the 
+value you expect to observe, the actual observed value, and whether the metric 
+passes your sanity check. 
+
+For a count (such as number of cookies and number of clicks on 
+"start free trial"), I calculated a confidence interval around the fraction of 
+events I expect to be assigned to the control group, and the observed value 
+should be the actual fraction that was assigned to the control group. 
+
+For the metric of click-through-probability, I constructed a confidence interval 
+for a difference in proportions, then check whether the difference between group 
+values falls within that confidence level.
+
+The calculation steps for each invariant metric are listed below. It turns out 
+that all three invariant metrics pass the sanity check.
+
+**Number of Cookies:**
+
+```{r}
+
+# Probability is the expected fraction of events assigned to the control group
+prob <- 0.5
+cookies_in_control_group <- 345543
+cookies_in_experiment_group <- 344660
+
+# Standard error 
+se <- sqrt(prob * (1 - prob) / (cookies_in_control_group + cookies_in_experiment_group))
+z <- 1.96
+moe <- z * se
+
+# Get the confidence interval
+lower_bound <- prob - moe
+upper_bound <- prob + moe
+
+# Obeserved fraction in the control group
+observed_cookies_prob <- cookies_in_control_group / 
+    (cookies_in_control_group + cookies_in_experiment_group)
+
+within_ci <- observed_cookies_prob >= lower_bound & 
+    observed_cookies_prob <= upper_bound
+```
+
+lower bound | upper bound | observed probability in control group | within confidence interval?
+------------|------------|------|----
+`r round(lower_bound, 4)`|`r round(upper_bound, 4)`| `r round(observed_cookies_prob, 4)`|`r within_ci`
+
+
+**Number of Clicks on "Start Free Trial":**
+
+```{r}
+
+# Probability is the expected fraction of events assigned to the control group
+prob <- 0.5
+clicks_in_control_group <- 28378
+clicks_in_experiment_group <- 28325
+
+# Standard error 
+se <- sqrt(prob * (1 - prob) / (clicks_in_control_group + clicks_in_experiment_group))
+z <- 1.96
+moe <- z * se
+
+# Get the confidence interval
+lower_bound <- prob - moe
+upper_bound <- prob + moe
+
+# Obeserved fraction in the control group
+observed_clicks_prob <- clicks_in_control_group / 
+    (clicks_in_control_group + clicks_in_experiment_group)
+
+within_ci <- observed_clicks_prob >= lower_bound & 
+    observed_clicks_prob <= upper_bound
+```
+
+lower bound | upper bound | observed probability in control group | within confidence interval?
+------------|------------|------|----
+`r round(lower_bound, 4)`|`r round(upper_bound, 4)`| `r round(observed_clicks_prob, 4)`|`r within_ci`
+
+
+**Click-through-probability on "Start Free Trial":**
+
+```{r}
+
+# CTP in both the control group and experiment group
+CTP_control <- clicks_in_control_group / cookies_in_control_group
+CTP_experiemnt <- clicks_in_experiment_group / cookies_in_experiment_group
+CTP_diff <- CTP_control - CTP_experiemnt
+
+# pooled probability
+pooled_CTP <- (clicks_in_control_group + clicks_in_experiment_group) /
+    (cookies_in_control_group + cookies_in_experiment_group)
+
+# pooled standard error
+pooled_se <- sqrt(pooled_CTP * (1 - pooled_CTP) 
+                  * (1/cookies_in_control_group + 1/cookies_in_experiment_group)) 
+
+# Get the confidence interval
+z <- 1.96
+moe <- z * pooled_se
+lower_bound <- 0 - moe
+upper_bound <- 0 + moe
+
+# Check whether the observed difference is within the confidence interval
+within_ci <- CTP_diff >= lower_bound & 
+    CTP_diff <= upper_bound
+```
+
+lower bound | upper bound | observed difference in CTP of both groups | within confidence interval?
+------------|------------|------|----
+`r round(lower_bound, 4)`|`r round(upper_bound, 4)`| `r round(CTP_diff, 8)`|`r within_ci`
+
+
+### Result Analysis
+
+#### Effect Size Tests
+
+> For each of your evaluation metrics, give a 95% confidence interval around the 
+difference between the experiment and control groups. Indicate whether each 
+metric is statistically and practically significant. 
+
+
+**Gross Conversion**
+    
+Gross conversion measures the probability of users who enrolled in courses 
+after they clicked the "start free trial" button. The calculation steps are 
+listed below. Since the confidence interval includes neither 0 nor practical 
+significance boundary (dmin = 0.01), gross conversion is both statistically significant 
+and practically significant.
+
+
+```{r}
+# Get number of clicks and number of enrollments
+clicks_in_control_group <- 17293
+enrolls_in_control_group <- 3785
+clicks_in_experiment_group <- 17260
+enrolls_in_experiment_group <- 3423
+
+# pooled probability and pooled standard error
+pooled_prob <- (enrolls_in_control_group + enrolls_in_experiment_group) /
+    (clicks_in_control_group + clicks_in_experiment_group)
+
+pooled_se <- sqrt(pooled_prob * (1-pooled_prob) * 
+                      (1/clicks_in_control_group + 1/clicks_in_experiment_group))
+
+
+# pooled probability difference
+d = enrolls_in_experiment_group/clicks_in_experiment_group -
+    enrolls_in_control_group/clicks_in_control_group
+
+# Confidence interval
+z <- 1.96
+lower_bound <- d - 1.96 * pooled_se
+upper_bound <- d + 1.96 * pooled_se
+
+# Check for significance
+d_min = 0.01
+contain_zero <- lower_bound <= 0 & upper_bound >= 0
+contain_dmin <- (lower_bound <= d_min & upper_bound >= d_min) |
+    (lower_bound <= -d_min & upper_bound >= -d_min)
+```
+
+lower bound | upper bound | contain 0? | contain d_min?
+------------|------------|------|----
+`r round(lower_bound, 4)`|`r round(upper_bound, 4)`| `r contain_zero`|`r contain_dmin`
+
+**Net Conversion**
+    
+Net conversion measures the probability of users who made at least one payment 
+after they clicked the "start free trial" button. The calculation steps are 
+listed below. Since the confidence interval includes both 0 and practical 
+significance boundary (dmin = 0.0075), net conversion is neither statistically 
+significant nor practically significant.
+
+
+```{r}
+# Get number of clicks and number of enrollments
+clicks_in_control_group <- 17293
+payments_in_control_group <- 2033
+clicks_in_experiment_group <- 17260
+payments_in_experiment_group <- 1945
+
+# pooled probability and pooled standard error
+pooled_prob <- (payments_in_control_group + payments_in_experiment_group) /
+    (clicks_in_control_group + clicks_in_experiment_group)
+
+pooled_se <- sqrt(pooled_prob * (1-pooled_prob) * 
+                      (1/clicks_in_control_group + 1/clicks_in_experiment_group))
+
+
+# pooled probability difference
+d = payments_in_experiment_group/clicks_in_experiment_group -
+    payments_in_control_group/clicks_in_control_group
+
+# Confidence interval
+z <- 1.96
+lower_bound <- d - 1.96 * pooled_se
+upper_bound <- d + 1.96 * pooled_se
+
+# Check for significance
+d_min = 0.0075
+contain_zero <- lower_bound <= 0 & upper_bound >= 0
+contain_dmin <- (lower_bound <= d_min & upper_bound >= d_min) |
+    (lower_bound <= -d_min & upper_bound >= -d_min)
+```
+
+lower bound | upper bound | contain 0? | contain d_min?
+------------|------------|------|----
+`r round(lower_bound, 4)`|`r round(upper_bound, 4)`| `r contain_zero`|`r contain_dmin`
+
+
+#### Sign Tests
+
+> For each of your evaluation metrics, do a sign test using the day-by-day data, 
+and report the p-value of the sign test and whether the result is statistically 
+significant.
+
+* Gross Conversion
+
+    By comparing correponding day-by-day data points of enrollments between 
+    the control and experiment group, I find out that there are only 4 days 
+    when the data in the experiment group exceed those in the control group. With 
+    number of "successes" equals to 4 and number of trials equals to 23, I run 
+    the sign test by assuming the probability of "success" in each trial is 0.5, 
+    so the two-tail P value I get is 0.0026, which is the chance of observing 
+    either 4 or fewer successes, or 19 or more successes, in 23 trials. Since 
+    0.0026 is less than the alpha (0.5), the change is statistically 
+    significant.
+    
+* Net Conversion
+
+    Following the same process as before, I compare the correponding day-by-day 
+    data points of payments between the control and experiment group. 
+    The two-tail P value is 0.6776, which is 
+    the chance of observing either 10 or fewer successes, or 13 or more 
+    successes, in 23 trials. This P value is larger than the alpha (0.5), so the 
+    change is not significally significant.
+    
+#### Summary
+
+> State whether you used the Bonferroni correction, and explain why or why not. 
+If there are any discrepancies between the effect size hypothesis tests and the 
+sign tests, describe the discrepancy and why you think it arose.
+
+I didn't use the Bonferroni correction.
+
+When we make multiple tests, the chance of incorrectly rejecting null hypothesis,
+that is, having at least one false positives is $1 - (1 - \alpha)^m$, where $m$ 
+is the number of tests. From the formula, we know that our error rate increases 
+as our number of metrics(tests) increases.
+
+In this A/B test, I will only launch the change when both of my evaluation 
+metrics(gross conversion and net conversion) are significant, 
+which I refer to as an "ALL" case. If I use Bonferroni correction to compensate 
+for the increase in false positive rate caused by the use 
+of multiple metrics, this will correspondingly reduce the power of test and thus 
+increase the false negative rate. However, increasing the false negative rate would 
+reduce the number of valid launch in this ALL case, where both metrics must 
+meet significant tests. Anyway, the whole point of A/B testing is about whether 
+or not to launch a change that is practically significant. 
+So Bonferroni correction would be too conservative.
+
+
+There are no discrepancies between the effect size hypothesis tests and the 
+sign tests. Both show that gross conversion metric is statistically significant 
+while net conversion is not.
+
+### Recommendation
+
+I suggest that Udacity not launch the new feature for now. 
+
+There are two main goals for this experiment:
+
+* Reducing the number of frustrated students who left the free 
+trial because they didn't have enough time
+
+* Avoiding significantly reducing the number of students to continue past the 
+free trial and eventually complete the course
+
+The gross conversion metric is statistically and practically significant, 
+meaning we already saw a significant reduction in number of students who 
+enrolled in the free trial in the experiment group. So I'm confident that the 
+first goal could be met if the new feature is launched.
+
+However, the net conversion metric has a confidence interval between -0.0016 and 
+0.0019 with lower bound less than zero, meaning the tested feature could result 
+in either an increase or a decrease in net conversion. This is not a 
+satisfactory result as I'm not certain about the successful achievement of the 
+second goal. 
+
+Based on the limited sample data, I cannot draw a definite conclusion. 
+More data should be collected and further testing is absolutely needed.  
+
+# Follow-up Experiment
+
+> If you wanted to reduce the number of frustrated students who cancel early in 
+the course, what experiment would you try? Give a brief description of the 
+change you would make, what your hypothesis would be about the effect of the 
+change, what metrics you would want to measure, and what unit of diversion you 
+would use. Include an explanation of each of your choices.
+
+**Description of the experiment**
+
+To reduce the frustrated students who cancel early in the course, I would suggest 
+adding a new prompt after they click on the "end free trial" button. The prompt 
+would ask these students about whether they find it difficult to keep up with the 
+flow of the course. If a student chooses "yes", then he/she will be redirected to 
+a page with possible solutions: successful experience from previous students, 
+advise about how to seek help from classmates and coaches on the forum, etc. If 
+a student chooses "no", then the free trial will be cancelled immediately.
+
+**Hypothesis**
+
+The effect I expect from the change would be a reduction in the number of students 
+who cancel before the free trial ends, thus leading to an increase in the revenue 
+as more students make at least one payment.
+
+**Invariant metric**
+
+Number of user-ids: this metric is considered as invariant because this experiment 
+only analyze post-enrollment data. The number of user-ids (students who enrolled 
+will be assigned a user-id) couldn't possibly change due to the new prompt they 
+haven't seen yet.
+
+**Evaluation metrics**
+
+1. Payment Conversion: this metric captures the proportion of students who continue 
+past the free trial and make the payment out of the students who enrolled in the 
+free trial. This is an effective metric to test whether or not the new prompt 
+would affect the number of student who make the initial payment.
+
+2. Revenue per Initial Enrollee: this metric measures the ratio of total revenue 
+from students who completed the free trial and made the initial payment over the 
+total number of students who are in the free trial stage or just complete the 
+free trial. This metric could track the effectiveness of the new change 
+bringing in more revenue.
+
+**Unit of Diversion**
+
+Unit of diversion would be user id throughout the experiment since I'm tracking 
+the students who already signed in the page to start the course. 
+
+
+# References
+
+1. Udacity A/B Testing Forum (Most Referenced)
+
+    https://discussions.udacity.com/c/nd002-a-b-testing
+
+2. Udacity A/B Testing Course
+
+    https://classroom.udacity.com/nanodegrees/nd002/parts/00213454013
+
+3. A/B Testing Wikipedia page
+
+    https://en.wikipedia.org/wiki/A/B_testing
+
+
+
+
+
